@@ -1,0 +1,5 @@
+#!/bin/bash
+
+dir="$(dirname "$(readlink -f ${BASH_SOURCE[0]})")"
+
+groovy -cp $dir/../groovy/ $dir/odfimbuild.groovy $*
