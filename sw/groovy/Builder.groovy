@@ -56,9 +56,10 @@ class Builder extends Thread {
 		target.prebuild.collect {
 			
 			cmd ->
-			println("\t\t*I Prebuild command: ${cmd.text()}")
+			println("*I Prebuild command: ${cmd.text()}")
 			def cmdProcess = "ssh $host cd ${this.workDir} && ${cmd.text()}".execute()
 			cmdProcess.in.eachLine { line -> println line }
+			cmdProcess.err.eachLine { line -> println line }
 			cmdProcess.waitFor()
 			
 		}
@@ -67,11 +68,24 @@ class Builder extends Thread {
 		// Call Make , or use <make></make> xml
 		//---------------------------
 		println()
-		println("\t\t*I Making")
-		def cmdProcess = "ssh $host cd ${this.workDir} && make".execute()
-		cmdProcess.in.eachLine { line -> println line }
-		cmdProcess.waitFor()
-		
+		println("*I Making...")
+		if (target.make) {
+			target.make.collect {
+				makeCommand ->
+				
+				println("*I Make command: "+makeCommand.text())
+				def cmdProcess = "ssh $host cd ${this.workDir} && ${makeCommand.text()}".execute()
+				cmdProcess.in.eachLine { line -> println line }
+				cmdProcess.err.eachLine { line -> println line }
+				cmdProcess.waitFor()
+				
+			}
+		} else {
+			def cmdProcess = "ssh $host cd ${this.workDir} && make".execute()
+			cmdProcess.in.eachLine { line -> println line }
+			cmdProcess.err.eachLine { line -> println line }
+			cmdProcess.waitFor()
+		}
 		
 		// Post Build
 		//-----------------------
