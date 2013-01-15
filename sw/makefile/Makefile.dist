@@ -78,7 +78,7 @@ dist_install_prepare: IS_APT = $(shell which apt-get)
 dist_install_prepare:
 	@echo "[DIST] Install Packages prepare: $(DIST_INSTALL_PACKAGES_DEPS)"
 	@echo "[DIST] Only supports yum for CentOS and apt for Debian for the moment"
-	@if [[ "$(DIST_INSTALL_PACKAGES_DEPS_YUM)" != "" && "$(IS_YUM)" != "" ]]; then yum install $(DIST_INSTALL_PACKAGES_DEPS_YUM); elif [[ "$(DIST_INSTALL_PACKAGES_DEPS_APT)" != "" && "$(IS_APT)" != "" ]]; then apt-get install aptitude; aptitude install $(DIST_INSTALL_PACKAGES_DEPS_APT); else echo "[DIST] No Packaging tool detected"; fi
+	@if [[ "$(DIST_INSTALL_PACKAGES_DEPS_YUM)" != "" && "$(IS_YUM)" != "" ]]; then sudo yum install $(DIST_INSTALL_PACKAGES_DEPS_YUM); elif [[ "$(DIST_INSTALL_PACKAGES_DEPS_APT)" != "" && "$(IS_APT)" != "" ]]; then sudo apt-get install aptitude; sudo aptitude install $(DIST_INSTALL_PACKAGES_DEPS_APT); else echo "[DIST] No Packaging tool detected"; fi
 
 
 
@@ -104,8 +104,9 @@ endef
 ##   - Delete if exists, recreate
 ########################
 define dist-module-prepare-work
+	
+	@if [[ -d $(dist-module-work-dir) ]]; then echo "[DIST] Removing previous work directory ($(dist-module-work-dir))"; rm -Rf $(dist-module-work-dir) ; fi
 	@echo "[DIST] Preparing work directory ($(dist-module-work-dir))"
-	@if [[ -d $(dist-module-work-dir) ]]; then rm -Rf $(dist-module-work-dir) ; fi
 	@mkdir $(dist-module-work-dir)
 endef
 
@@ -129,12 +130,22 @@ define dist-module-add
 	done
 endef
 
+## Copies files list to destination folder
+## Destination will be created as a folder
 ## @$(call dist-module-add-to,"files",destination)
 define dist-module-add-to
 	@if [[ ! -d $(dist-module-work-dir)/$(2) ]]; then mkdir -p $(dist-module-work-dir)/$(2) ; fi
 	for f in $(1); do \
-	if [[ -d $${f} ]]; then cp -Rpf $${f} $(dist-module-work-dir); else cp -fp $${f} $(dist-module-work-dir); fi; \
+	if [[ -d $${f} ]]; then cp -Rpf $${f} $(dist-module-work-dir)/$(2); else cp -fp $${f} $(dist-module-work-dir)/$(2); fi; \
 	done
+endef
+
+## Copies a file to another file (usefuil to change file name)
+## Destination parent folders will be created as a folders, but it must be a file
+## @$(call dist-module-copy-to,file,destinationFile)
+define dist-module-copy-to
+	@if [[ ! -d $(shell dirname $(dist-module-work-dir)/$(2)) ]]; then mkdir -p $(shell dirname $(dist-module-work-dir)/$(2)) ; fi
+	@cp -fp $(1) $(dist-module-work-dir)/$(2);
 endef
 
 

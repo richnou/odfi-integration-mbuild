@@ -10,12 +10,13 @@ import odfi.dev.mbuild.*
 
 // Get The Arguments
 //-----------------------------
-def cli = new CliBuilder(usage: 'odfi_integration_mbuild --build [buildid]')
+def cli = new CliBuilder(usage: 'odfi_integration_mbuild  --build [buildid]')
 cli.with {
     h longOpt: 'help', 'Show usage information'
     //e longOpt: 'exclude','Comma separated list of buildId:targetIds to exclude'
     //b longOpt: 'build', 'buildid:targetid String representing the build to do'
 }
+cli.f(args:1,argName:"file","Path to mbuild.xml build definition file")
 cli.build(args:1,argName:"build","buildid:targetid String representing the build to do")
 cli.e(args:1,argName:"exclude","Comma separated list of buildId:targetIds to exclude")
 
@@ -34,11 +35,12 @@ if (options.h) {
 
 
 //-- Look for mbuild.xml
-def mbuildFile = new File("mbuild.xml").absoluteFile
+def mbuildFile = options.f ? new File(options.f).absoluteFile :  new File("mbuild.xml").absoluteFile
 if (!mbuildFile.exists()) {
-    println("*E: mbuild.xml in local directory was not found")
+    println("*E: mbuild definition file not found: ${mbuildFile}. Provide a correct -f argument, or set a mbuild.xml in local directory")
+	cli.usage()
     return
-}
+} 
 
 //-- Parse XML
 def builds = new XmlParser().parse(mbuildFile)
@@ -124,7 +126,10 @@ builds.build.collect {
             //---------------------------
             def host = target.host.text()
             
-            def builder = new Builder(build,target,mbuildFile.parentFile)
+			//-- Working dir -> location of mbuild or other if specified
+			def workDir = target.'@workingDir' ? new File(target.'@workingDir') : mbuildFile.parentFile
+			
+            def builder = new Builder(build,target,workDir)
             //builder.start()
 			builder.run()
         } 

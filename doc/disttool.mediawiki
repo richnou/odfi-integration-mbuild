@@ -1,0 +1,168 @@
+= Distribution Tool Documentation =
+
+__TOC__
+
+== Description ==
+
+=== What do we want ===
+
+* A top makefile that:
+** Calls "make package -f Makefile.dist" in subfolders (also called modules)
+** Packages all the resulting packages of each module in a single package
+** Creates an install script to be used when unpacked
+
+* An install script:
+** Unpacks all submodules' packages
+** Runs "make install -f Makefile.dist" in all unpacked submodules
+** Propagates a PREFIX variable containing the installation prefix
+	
+* The modules distribution makefiles:
+** Contain a "dist" target doing the work
+** Can include a makefile provided by this utility for helping methods
+** Must produce in the module folder a modulename-....-xx.tar.gz
+** The tar.gz must unpack to folder named the same way as the provided
+** If the file name ends in -xx.tar.gz, the xx could be interpreted as a version name
+	
+* Helpers
+
+=== Notes ===
+
+The make file used for the distribution process is called "Makefile.dist" to avoid conflict if a module already has
+a standard Makefile in use for like Autotools 
+
+
+== Packaging Process ==
+
+Note: The variables references used in this part are detailed under "Makefile API"
+
+=== Distribution package building ===
+
+* For each module in $(DIST_MODULES)
+** Call make dist using one possible Makefile file (see Module Makefile part)
+** Look in module folder for the most recent tar.gz
+** Add  the found tarball to resulting distribution package
+* The modules packages are added to the distribution under the following name:
+** $(count)-tarball.tar.gz
+** Where $(count) is the index in the module list
+** This ensures that installation calls make install in the same order as the modules list
+** This is required if modules need other previous modules to be build before them
+
+=== Installation ===
+
+A common install script is packages during distribution building
+
+
+
+== Makefile API ==
+
+Here is how to use this dist tool
+
+=== Master Makefile ===
+
+The master makefile is the one on which the user calls "make something" and which starts packaging the modules
+and create the distribution package.
+
+It must contain the following definitions:
+
+  ## Distribution description
+  DIST_VERSION := x.x.x
+  DIST_NAME := distributionName  ## Output will be $(DIST_NAME)-$(DIST_VERSION).run
+  DIST_MODULES := module1 path/to/another/module  ## List of the folders containing a module
+  include $(ODFI_MBUILD_HOME)/sw/makefile/Makefile.dist  ## Include the distribution tool here! Not Before!
+
+
+==== Packaging process ====
+
+
+
+
+=== Module Makefile ===
+
+The modules must implement in a makefile a "dist" target, responsible for packaging the required files
+The Makefile can be named (in oder of preference chosen by the tool):
+
+* Makefile.modulename.dist
+* Makefile.dist
+* Makefile
+
+It must contain the following definitions:
+	
+	 ## Distribution description
+  	 DIST_VERSION := x.x.x ## Optional (inherited from master if not defined)
+	 include $(ODFI_MBUILD_HOME)/sw/makefile/Makefile.dist  ## Include the distribution tool here! Not Before!
+
+==== Expected output ====
+
+The user should produce a tar.gz package with the module content to be distributed.
+The master makefile will look in the module folder for the most recently created tarball
+
+The help with that, a small API provides convienient functions to:
+
+* Create a package prepare directory
+* Copy files in it
+* Package the work directory outputing a: $(DIST_MODULE_NAME)-$(DIST_VERSION).tar.gz file
+	 
+ ==== API reference ====
+ 
+ * variable $(dist-module-work-dir)
+ 
+ 	This variable contains the name of the packaging work dir
+ 	
+ 	Example:
+ 	  
+ 	  dist:
+ 	  	echo "Work dir: $(dist-module-work-dir)"
+ 	
+ * function $(dist-module-prepare-work)
+ 
+   	This function cleans the $(dist-module-work-dir) folder and creates it so that user may start preparing the package.
+	Example:
+		
+		dist:
+			$(dist-module-prepare-work)
+			echo "Now the $(dist-module-work-dir)" is available
+ 
+* function $(dist-module-add,path/to/file(s)*)
+
+  This function copies the provided folder content or files to the work directory.
+  It takes one argument that can be a wildcard thing:
+	
+  Example:
+  		dist:
+  			$(dist-module-prepare-work)
+  			@$(call dist-module-add,*.c)
+  			@$(call dist-module-add,folder anotherfolder FILE1 FILE2)
+  			
+  			
+	
+
+== Install Reference ==
+
+=== Self extracting script ===
+
+The distribution package is a seflextracting script.
+It takes following parameters:
+
+* -v 
+
+  Per default, make is called in silent mode. This arguments disables the make silent mode
+
+* --no-install
+	
+	
+  Only Unpacks the packages, don't run any install target
+  
+* --prefix=[/path/to/install]
+
+  Default: `pwd`
+  This value will be set to the $(PREFIX) environment variable, and serves as default installation path
+  for "install" commands calls for example
+	
+* --filter="regexp"
+
+  Default: .*
+  Only the packages whose names match this provided regexp will be installed.
+  This does not affect sub run installator, but is propagated to them.
+	
+	
+	

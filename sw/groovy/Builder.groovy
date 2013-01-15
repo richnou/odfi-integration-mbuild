@@ -39,6 +39,7 @@ class Builder extends Thread {
 			if (!this.workDir.exists())
 				this.workDir.mkdirs()
 		}
+		this.workDir = new File(this.workDir.absolutePath.replace("/nfs",""))
 		println("\t\t*I Workdir: "+this.workDir.absolutePath)
 		
 		//-- Prepare on host
@@ -53,16 +54,40 @@ class Builder extends Thread {
 		// Execute prebuild commands
 		//---------------------------
 		println()
+		
+		def commands = []
+		
+		//-- Build (parent) prebuild
+		target.parent().prebuild.collect {
+			
+			cmd ->
+			
+			commands << cmd.text()
+			
+			println("*I Prebuild command from build definition: ${cmd.text()}")
+			/*def cmdProcess = "ssh $host cd ${this.workDir} && ${cmd.text()}".execute()
+			cmdProcess.in.eachLine { line -> println line }
+			cmdProcess.err.eachLine { line -> println line }
+			cmdProcess.waitFor()*/
+			
+		}
+		
+		//-- Target Prebuild
 		target.prebuild.collect {
 			
 			cmd ->
 			println("*I Prebuild command: ${cmd.text()}")
-			def cmdProcess = "ssh $host cd ${this.workDir} && ${cmd.text()}".execute()
+			
+			commands << cmd.text()
+			
+			/*def cmdProcess = "ssh $host cd ${this.workDir} && ${cmd.text()}".execute()
 			cmdProcess.in.eachLine { line -> println line }
 			cmdProcess.err.eachLine { line -> println line }
-			cmdProcess.waitFor()
+			cmdProcess.waitFor()*/
 			
 		}
+		
+		
 		
 		
 		// Call Make , or use <make></make> xml
@@ -74,14 +99,29 @@ class Builder extends Thread {
 				makeCommand ->
 				
 				println("*I Make command: "+makeCommand.text())
-				def cmdProcess = "ssh $host cd ${this.workDir} && ${makeCommand.text()}".execute()
+				commands << makeCommand.text()
+				
+				/*def cmdProcess = "ssh $host cd ${this.workDir} && ${makeCommand.text()}".execute()
 				cmdProcess.in.eachLine { line -> println line }
 				cmdProcess.err.eachLine { line -> println line }
-				cmdProcess.waitFor()
+				cmdProcess.waitFor()*/
 				
 			}
 		} else {
-			def cmdProcess = "ssh $host cd ${this.workDir} && make".execute()
+		
+			commands << "make"
+		
+			/*def cmdProcess = "ssh $host cd ${this.workDir} && make".execute()
+			cmdProcess.in.eachLine { line -> println line }
+			cmdProcess.err.eachLine { line -> println line }
+			cmdProcess.waitFor()*/
+		}
+		
+		//-- Make the call  
+		if (commands.size()>0) {
+			def finalCommands = commands.join(" && ")
+			println("*I Prebuild final command: ${finalCommands}")
+			def cmdProcess = "ssh $host cd ${this.workDir} && ${finalCommands}".execute()
 			cmdProcess.in.eachLine { line -> println line }
 			cmdProcess.err.eachLine { line -> println line }
 			cmdProcess.waitFor()
@@ -90,6 +130,8 @@ class Builder extends Thread {
 		// Post Build
 		//-----------------------
 		println("\t\t*I Post building")
+		
+		
 		//-- Sync things
 		if (target.postbuild.sync) {
 			//def syncValue = groovy.util.Eval.me(${target.postbuild.sync.text()})

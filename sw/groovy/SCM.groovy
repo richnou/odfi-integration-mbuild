@@ -18,6 +18,9 @@ class SCM {
 	 */
 	public void checkout() {
 		
+		
+		println "*I SCM Working dir: ${this.workDir} "
+		
 		// URL
 		//-----------
 		def url = scm.url.text()
@@ -29,7 +32,7 @@ class SCM {
 			handleGIT(url)
 		} else {
 		
-			throw new Exception("*E SCM ist not handled with URL: $url");
+			println "*W SCM ist not handled with URL: $url, not doing anything";
 		
 		}
 		
@@ -90,7 +93,7 @@ class SCM {
 			
 			//-- Clone
 			//throw new Exception("Not Cloned");
-			println "*I: Cloning..."
+			println "*I: Cloning from $url ..."
 			def cloneProcess = "ssh ${this.host} git clone $url ${this.workDir}".execute()
 			cloneProcess.in.eachLine { line -> println line }
 			cloneProcess.err.eachLine { line -> println line }

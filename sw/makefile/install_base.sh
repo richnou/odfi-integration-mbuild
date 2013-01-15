@@ -17,7 +17,7 @@ install=true ## Do we run install target?
 verbose="-s" ## Calls to make won't have the -s option if -v if set on command line
 list=false
 
-ARGS=`getopt -o "p,v,l" -l "no-install,list,prefix:,workdir:,filter:" -- "$@"`
+ARGS=`getopt -o "p,v,l" -l "no-install,list,help,prefix:,workdir:,filter:" -- "$@"`
 eval set -- "$ARGS"
 while true;
 do
@@ -65,6 +65,30 @@ do
 	--no-install)
 		echo "[DIST] No install will be performed"
 		install=false
+	shift;;
+	
+	--help)
+		echo "Usage:
+./installer.run -vl [--workdir path/to/unpack/dir] [--prefix path/to/install] [--filter regexp]
+			
+With:
+		
+--workdir path/to/unpack/dir: Path to a folder where the installer content will be extracted and installation phase called
+Default: current directory
+
+--prefix path/to/install: Path to a folder where the installation results will be copied to, typically by using the install command
+Default: current directory
+		
+--filter regexp: Provide a regular expression, for which only archives whose names are matching will be installed. Useful to repeat installation of one or more sub-archives, but not all of them
+Default: .* (i.e: All)
+		
+-v: Activate verbose mode of make command. Useful to see full compilation commands
+		
+-l: Only list the content of the archives/sub-archives, don't extract or perform any install
+"
+		
+		
+		exit 0
 	shift;;
 	
 	--)
