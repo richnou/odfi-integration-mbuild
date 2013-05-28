@@ -27,21 +27,21 @@ DIST_PACKAGES ?=  $(foreach dir,$(DIST_MODULES),$(call find_last_archive,$(dir))
 
 ### Install variables
 #############################
-DIST_INSTALL_PACKAGES_DEPS_YUM ?= 
-DIST_INSTALL_PACKAGES_DEPS_APT ?= 
+DIST_INSTALL_PACKAGES_DEPS_YUM ?=
+DIST_INSTALL_PACKAGES_DEPS_APT ?=
 
 ## This target will prepare the modules
 ## The module names in the variable $(MODULES) are transformed to modulename.module, to be detected by generic target rule
 ##
 ## Output:
-##   - $(DIST_NAME).tar.gz with all the other packages 
+##   - $(DIST_NAME).tar.gz with all the other packages
 ##   - added sw/makefile/Makefile.dist (this makefile) for installation phase later
 ##   - If DIST_MODULE_NAME is set, we are in module context, so don't produce any install run script
-##    
+##
 ## --xform 's/$(dist-module-work-dir)\/\(.*\)/\1/' $(find_top_distwork)
 ##############################################
 MODULES_TARGETS = $(patsubst %,%.module,$(DIST_MODULES))
-dist_prepare_modules: 
+dist_prepare_modules:
 dist_prepare_modules: $(MODULES_TARGETS)
 	@echo "[DIST] All modules prepared, archives are: $(DIST_PACKAGES)"
 	@echo "[DIST] Packaging all modules together"
@@ -58,6 +58,13 @@ dist_prepare_modules: $(MODULES_TARGETS)
 ## $(shell find $* -name "*.tar.gz" -exec ls -1t "{}" + | head -n1)
 ## override lastArchive = $(eval $(call find_last_archive_in_dir,$*))
 ####################################################################
+
+%.gitmodule.module: override moduleName = $(notdir $*)
+%.gitmodule.module:
+	@echo "-------------------------------------------------------"
+	@echo "--[DIST]-- Preparing the module named $(moduleName) from GIT: $*"
+	@echo "-------------------------------------------------------"
+
 %.module: override moduleName = $(notdir $*)
 %.module:
 	@echo "-------------------------------------------------------"
@@ -69,23 +76,36 @@ dist_prepare_modules: $(MODULES_TARGETS)
 	then DIST_MODULE_NAME=$(moduleName) make -C $* dist -f Makefile.dist; \
 	else DIST_MODULE_NAME=$(moduleName) make -C $* dist; fi;
 	@echo "-------------------------------------------------------"
-	
-	
+
+
+
 ## This target will prepare the module for installation:
-##   - Install the packages listed in $(DIST_INSTALL_PACKAGES_DEPS)	
+##   - Install the packages listed in $(DIST_INSTALL_PACKAGES_DEPS)
+
+DO_PACKAGES ?= true
+
 dist_install_prepare: IS_YUM = $(shell which yum)
 dist_install_prepare: IS_APT = $(shell which apt-get)
 dist_install_prepare:
-	@echo "[DIST] Install Packages prepare: $(DIST_INSTALL_PACKAGES_DEPS)"
+	@echo "[DIST] Install Packages prepare: $(DIST_INSTALL_PACKAGES_DEPS) (yum: $(IS_YUM), apt: $(IS_APT))"
 	@echo "[DIST] Only supports yum for CentOS and apt for Debian for the moment"
-	@if [[ "$(DIST_INSTALL_PACKAGES_DEPS_YUM)" != "" && "$(IS_YUM)" != "" ]]; then sudo yum install $(DIST_INSTALL_PACKAGES_DEPS_YUM); elif [[ "$(DIST_INSTALL_PACKAGES_DEPS_APT)" != "" && "$(IS_APT)" != "" ]]; then sudo apt-get install aptitude; sudo aptitude install $(DIST_INSTALL_PACKAGES_DEPS_APT); else echo "[DIST] No Packaging tool detected"; fi
+	@if [[ "$(DO_PACKAGES)" != "false" && "$(DIST_INSTALL_PACKAGES_DEPS_YUM)" != "" && "$(IS_YUM)" != "" ]]; \
+	then \
+		sudo yum install $(DIST_INSTALL_PACKAGES_DEPS_YUM); \
+	elif [[ "$(DO_PACKAGES)" != "false" && "$(DIST_INSTALL_PACKAGES_DEPS_APT)" != "" && "$(IS_APT)" != "" ]]; \
+	then \
+		sudo apt-get install aptitude; \
+		sudo aptitude install $(DIST_INSTALL_PACKAGES_DEPS_APT); \
+	else \
+		echo "[DIST] No Packaging tool detected"; \
+	fi
 
 
 
 ##########################################
 ## Utility functions for modules work
 ##########################################
-dist-module-work-dir := dist_work
+dist-module-work-dir := $(USER)-dist_work
 
 ## Log
 ##  calls: @echo "[$(DIST_MODULE_NAME)] $(1)"
@@ -104,7 +124,7 @@ endef
 ##   - Delete if exists, recreate
 ########################
 define dist-module-prepare-work
-	
+
 	@if [[ -d $(dist-module-work-dir) ]]; then echo "[DIST] Removing previous work directory ($(dist-module-work-dir))"; rm -Rf $(dist-module-work-dir) ; fi
 	@echo "[DIST] Preparing work directory ($(dist-module-work-dir))"
 	@mkdir $(dist-module-work-dir)
@@ -114,6 +134,7 @@ endef
 ## Ex: $(call dist-module-add-bin,wonderful_script.sh)  $(call dist-module-add-bin,folder container)
 ##########################################
 define dist-module-add-bin
+	@echo "Calling dist-module-add-bin for '$(1)'"
 	@if [[ ! -d $(dist-module-work-dir)/bin ]]; then mkdir $(dist-module-work-dir)/bin ; fi
 	@for f in $(1); do \
 	if [[ -d $${f} ]]; then cp -vRpf $${f}/* $(dist-module-work-dir)/bin; else cp -fvp $${f} $(dist-module-work-dir)/bin/; fi; \
@@ -152,26 +173,46 @@ endef
 ## Perform Pakaging
 ##  - Copies the Makefile.dist alongside in the work directory, or local Makefile if there is one
 ##  - Output: $(DIST_MODULE_NAME)-$(DIST_VERSION).tar.gz
+#@echo "[DIST] Packaging to: `echo $(dist-module-work-dir) | sed c\\$(DIST_MODULE_NAME)-$(DIST_VERSION).tar.gz`"
 ##########################
 define dist-module-package
-	
+
 	@if [[ -e Makefile.$(DIST_MODULE_NAME).dist ]]; \
-	then $(call dist-module-add,Makefile.$(DIST_MODULE_NAME).dist); \
+		then $(call dist-module-add,Makefile.$(DIST_MODULE_NAME).dist); \
 	elif [[ -e Makefile.dist ]]; \
-	then $(call dist-module-add,Makefile.dist); \
-	else $(call dist-module-add,Makefile); \
+		then $(call dist-module-add,Makefile.dist); \
+	elif [[ -e Makefile ]]; \
+		then $(call dist-module-add,Makefile); \
 	fi;
-	
-	@echo "[DIST] Packaging to: `echo $(dist-module-work-dir) | sed c\\$(DIST_MODULE_NAME)-$(DIST_VERSION).tar.gz`"
-	
-	@tar cav --xform "s/$(dist-module-work-dir)/$(DIST_MODULE_NAME)-$(DIST_VERSION)/" -f $(DIST_MODULE_NAME)-$(DIST_VERSION).tar.gz  $(dist-module-work-dir)/ 
+
+	@tar cav --xform "s/$(dist-module-work-dir)/$(DIST_MODULE_NAME)-$(DIST_VERSION)/" -f $(DIST_MODULE_NAME)-$(DIST_VERSION).tar.gz  $(dist-module-work-dir)/
 endef
-	
+
+
+##########################################
+## Git Help
+##########################################
+
+## Returns the stand
+
+##
+## Clones or updates a git repository, that will be used as packaged module
+##########################
+define dist-git-module
+	@echo "[DIST] Cloning/Updating git module from $(1) into $(3), using branch/tag $(2)"
+	@if [[ -d $(3) ]]; then \
+		cd $(3) && git pull; \
+	else \
+		git clone -b $(2) $(1) $(3); \
+	fi;
+endef
+
+
 ##########################################
 ## Utility functions for install
-##########################################	
+##########################################
 #define dist-install-tcl-
 
 #endef
-	
-	
+
+
