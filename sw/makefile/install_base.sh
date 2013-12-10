@@ -9,6 +9,11 @@ unpack=`pwd`
 ## Install prefix
 export PREFIX=`pwd`
 
+## Logging
+function log {
+  echo -e "\e[36;1m[DIST] $1\e[0m"
+}
+
 
 ## Get Options
 ####################
@@ -25,22 +30,22 @@ do
 
 	-l|--list)
 
-		echo "[DIST] Only listing content"
+		log "Only listing content"
 		list=true
 
 	shift;;
 	-p|--prefix)
 		if [[ ! -n "$2" ]]
 		then
-			echo "Prefix needs to have a provided path!"
+			log "Prefix needs to have a provided path!"
 			exit -1
 		fi
 		export PREFIX=$2
-		echo "[DIST] Setting PREFIX to ${PREFIX}"
+		log "Setting PREFIX to ${PREFIX}"
 	shift 2;;
 
 	--filter)
-		echo "[DIST] Filtering packages to regexp $2"
+		log "Filtering packages to regexp $2"
 		filter=$2
 	shift 2;;
 
@@ -54,16 +59,16 @@ do
 
 
 		unpack=`cd $2 && pwd`
-		echo "[DIST] Setting Workdir to ${unpack}"
+		log "Setting Workdir to ${unpack}"
 	shift 2;;
 
 	-v)
-		echo "[DIST] Using verbose mode"
+		log "Using verbose mode"
 		verbose=""
 	shift;;
 
 	--no-install)
-		echo "[DIST] No install will be performed"
+		log "No install will be performed"
 		install=false
 	shift;;
 
@@ -119,9 +124,9 @@ fi
 ## Welcome and basic User interaction
 ###################################
 
-echo "[DIST] Welcome to Distribution install script"
-echo "[DIST] This script will unpack to ${unpack}, and then run the install"
-echo "[DIST] Processor count: ${cpucount}"
+log "Welcome to Distribution install script"
+log "This script will unpack to ${unpack}, and then run the install"
+log "Processor count: ${cpucount}"
 
 
 
@@ -136,19 +141,19 @@ packages=`tail -n+$ARCHIVE $0 | tar xzv -C ${unpack} | grep -E 'tar.gz|run'`
 ## Install
 ##############################
 
-echo "[DIST] Starting installation into ${PREFIX}..."
+log "Starting installation into ${PREFIX}..."
 
 cd ${unpack}
 ## The extraction must have extracted some packages which we gathered in the ${packages} variable
 for package in ${packages};
 do
-	echo "[DIST] - Package ${package}"
+	log "- Package ${package}"
 
 
 
 	if [[ ${package} =~ .*\.run ]]
 	then
-		echo "[DIST] - Running Subinstall"
+		log "- Running Subinstall"
 
 		args="--prefix=${PREFIX} --filter=${filter}"
 
@@ -168,19 +173,31 @@ do
 		fi
 
 		## Get package folder by listing archive content
-		package_folder=`tar taf ${package} | head -n1`
+		package_folder=`tar tf ${package} | head -n1`
 
 		## Extract
-		tar axf ${package}
-		#tar xzv -f ${package}
+		#tar axf ${package}
+		tar xzvf ${package}
 
-		echo "[DIST] - Extracted to ${package_folder}"
+		log "- Extracted to and installing from ${package_folder}"
 
 		## Find makefile
 		dist_makefile=`cd ${package_folder} && find -maxdepth 1 -name "Makefile.*dist" | tail -n1`
 
 		if [[ $install == true ]]
 		then
+
+			#### Install default paths:
+			####  - bin
+			####  - sbin
+			####  - lib
+			####  - usr
+			if [[ -d ${package_folder}/bin ]];  then cp -Rf  --preserve=mode,timestamps ${package_folder}/bin ${PREFIX} ; fi
+			if [[ -d ${package_folder}/sbin ]]; then cp -Rf  --preserve=mode,timestamps ${package_folder}/sbin ${PREFIX} ; fi
+			if [[ -d ${package_folder}/lib ]];  then cp -Rf  --preserve=mode,timestamps ${package_folder}/lib ${PREFIX} ; fi
+			if [[ -d ${package_folder}/usr ]];  then cp -Rf  --preserve=mode,timestamps ${package_folder}/usr ${PREFIX} ; fi
+			if [[ -d ${package_folder}/tcl ]];  then cp -Rf  --preserve=mode,timestamps ${package_folder}/tcl ${PREFIX} ; fi
+			if [[ -d ${package_folder}/doc ]];  then cp -Rf  --preserve=mode,timestamps ${package_folder}/doc ${PREFIX} ; fi
 
 			#### Run make dist_install in it
 			if [[ ${dist_makefile} != "" ]]
@@ -197,17 +214,7 @@ do
 				exit $?
 			fi
 
-			#### Install default paths:
-			####  - bin
-			####  - sbin
-			####  - lib
-			####  - usr
-			if [[ -d ${package_folder}/bin ]];  then cp -Rfp ${package_folder}/bin ${PREFIX} ; fi
-			if [[ -d ${package_folder}/sbin ]]; then cp -Rfp ${package_folder}/sbin ${PREFIX} ; fi
-			if [[ -d ${package_folder}/lib ]];  then cp -Rfp ${package_folder}/lib ${PREFIX} ; fi
-			if [[ -d ${package_folder}/usr ]];  then cp -Rfp ${package_folder}/usr ${PREFIX} ; fi
-			if [[ -d ${package_folder}/tcl ]];  then cp -Rfp ${package_folder}/tcl ${PREFIX} ; fi
-			if [[ -d ${package_folder}/doc ]];  then cp -Rfp ${package_folder}/doc ${PREFIX} ; fi
+
 		fi
 
 	fi

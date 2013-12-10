@@ -43,13 +43,13 @@ DIST_INSTALL_PACKAGES_DEPS_APT ?=
 MODULES_TARGETS = $(patsubst %,%.module,$(DIST_MODULES))
 dist_prepare_modules:
 dist_prepare_modules: $(MODULES_TARGETS)
-	@echo "[DIST] All modules prepared, archives are: $(DIST_PACKAGES)"
-	@echo "[DIST] Packaging all modules together"
-	@echo "[DIST] Copying base install script"
+	@echo -e "\e[93;1m[DIST] All modules prepared, archives are: $(DIST_PACKAGES)\e[0m"
+	@echo -e "\e[93;1m[DIST] Packaging all modules together\e[0m"
+	@echo -e "\e[93;1m[DIST] Copying base install script\e[0m"
 	@if [[ -f $(DIST_NAME)-$(DIST_VERSION).run ]]; then rm -f $(DIST_NAME)-$(DIST_VERSION).run; fi
 	@cp -f $(ODFI_MBUILD_HOME)/sw/makefile/install_base.sh $(DIST_NAME)-$(DIST_VERSION).run
 	@tar cavz --xform 's/.*\/\(.*\.tar\.gz\)/\1/' --xform 's/.*\/\(.*\.run\)/\1/' $(DIST_PACKAGES) $(call find_last_archive2,./) --xform 's/.*\/\(sw\/makefile\/Makefile\.dist\)/\1/' $(ODFI_MBUILD_HOME)/sw/makefile/Makefile.dist >> $(DIST_NAME)-$(DIST_VERSION).run
-	@echo "[DIST] List of archive content for debugging purpose:"
+	@echo -e "\e[93;1m[DIST] List of archive content for debugging purpose:\e[0m"
 	@./$(DIST_NAME)-$(DIST_VERSION).run --list
 
 
@@ -61,21 +61,21 @@ dist_prepare_modules: $(MODULES_TARGETS)
 
 %.gitmodule.module: override moduleName = $(notdir $*)
 %.gitmodule.module:
-	@echo "-------------------------------------------------------"
-	@echo "--[DIST]-- Preparing the module named $(moduleName) from GIT: $*"
-	@echo "-------------------------------------------------------"
+	@echo -e "\e[93;1m-------------------------------------------------------\e[0m"
+	@echo -e "\e[93;1m--[DIST]-- Preparing the module named $(moduleName) from GIT: $*\e[0m"
+	@echo -e "\e[93;1m-------------------------------------------------------\e[0m"
 
 %.module: override moduleName = $(notdir $*)
 %.module:
-	@echo "-------------------------------------------------------"
-	@echo "--[DIST]-- Preparing the module named $(moduleName) in $*"
-	@echo "-------------------------------------------------------"
+	@echo -e "\e[93;1m-------------------------------------------------------\e[0m"
+	@echo -e "\e[93;1m--[DIST]-- Preparing the module named $(moduleName) in $*\e[0m"
+	@echo -e "\e[93;1m-------------------------------------------------------\e[0m"
 	@if [[ -e $*/Makefile.$(moduleName).dist ]]; \
 	then DIST_MODULE_NAME=$(moduleName) make -C $* dist -f Makefile.$(moduleName).dist; \
 	elif [[ -e $*/Makefile.dist ]]; \
 	then DIST_MODULE_NAME=$(moduleName) make -C $* dist -f Makefile.dist; \
 	else DIST_MODULE_NAME=$(moduleName) make -C $* dist; fi;
-	@echo "-------------------------------------------------------"
+	@echo -e "\e[93;1m-------------------------------------------------------\e[0m"
 
 
 
@@ -87,8 +87,8 @@ DO_PACKAGES ?= true
 dist_install_prepare: IS_YUM = $(shell which yum)
 dist_install_prepare: IS_APT = $(shell which apt-get)
 dist_install_prepare:
-	@echo "[DIST] Install Packages prepare: $(DIST_INSTALL_PACKAGES_DEPS) (yum: $(IS_YUM), apt: $(IS_APT))"
-	@echo "[DIST] Only supports yum for CentOS and apt for Debian for the moment"
+	@echo -e "\e[93;1m[DIST] Install Packages prepare: $(DIST_INSTALL_PACKAGES_DEPS) (yum: $(IS_YUM), apt: $(IS_APT))\e[0m"
+	@echo -e "\e[93;1m[DIST] Only supports yum for CentOS and apt for Debian for the moment\e[0m"
 	@if [[ "$(DO_PACKAGES)" != "false" && "$(DIST_INSTALL_PACKAGES_DEPS_YUM)" != "" && "$(IS_YUM)" != "" ]]; \
 	then \
 		sudo yum install $(DIST_INSTALL_PACKAGES_DEPS_YUM); \
@@ -97,7 +97,7 @@ dist_install_prepare:
 		sudo apt-get install aptitude; \
 		sudo aptitude install $(DIST_INSTALL_PACKAGES_DEPS_APT); \
 	else \
-		echo "[DIST] No Packaging tool detected"; \
+		echo -e "\e[91;1m[DIST] No Packaging tool detected\e[0m"; \
 	fi
 
 
@@ -112,7 +112,7 @@ dist-module-work-dir := $(USER)-dist_work
 ## Usage:
 ##	$(call dist-module-log,"Text")
 define dist-module-log
-	@echo "[$(DIST_MODULE_NAME)] $(1)"
+	@echo -e "\e[93;1m[$(DIST_MODULE_NAME)] $(1)\e[0m"
 endef
 
 ## Default dist target for a module:
@@ -125,8 +125,8 @@ endef
 ########################
 define dist-module-prepare-work
 
-	@if [[ -d $(dist-module-work-dir) ]]; then echo "[DIST] Removing previous work directory ($(dist-module-work-dir))"; rm -Rf $(dist-module-work-dir) ; fi
-	@echo "[DIST] Preparing work directory ($(dist-module-work-dir))"
+	@if [[ -d $(dist-module-work-dir) ]]; then echo -e "\e[93;1m[DIST] Removing previous work directory ($(dist-module-work-dir))\e[0m"; rm -Rf $(dist-module-work-dir) ; fi
+	@echo -e "\e[93;1m[DIST] Preparing work directory ($(dist-module-work-dir))\e[0m"
 	@mkdir $(dist-module-work-dir)
 endef
 
@@ -134,20 +134,20 @@ endef
 ## Ex: $(call dist-module-add-bin,wonderful_script.sh)  $(call dist-module-add-bin,folder container)
 ##########################################
 define dist-module-add-bin
-	@echo "Calling dist-module-add-bin for '$(1)'"
+	@echo -e "\e[93;1m[DIST] Calling dist-module-add-bin for '$(1)'\e[0m"
 	@if [[ ! -d $(dist-module-work-dir)/bin ]]; then mkdir $(dist-module-work-dir)/bin ; fi
 	@for f in $(1); do \
-	if [[ -d $${f} ]]; then cp -vRpf $${f}/* $(dist-module-work-dir)/bin; else cp -fvp $${f} $(dist-module-work-dir)/bin/; fi; \
+	if [[ -d $${f} ]]; then cp -vRf $${f}/* $(dist-module-work-dir)/bin; else cp -fvp $${f} $(dist-module-work-dir)/bin/; fi; \
 	done;
 endef
 
 ## Copy a file or a folder to the work dir
 ################################################
 
-## @$(call dist-module-add-to,"files",destination)
+## @$(call dist-module-add,"files")
 define dist-module-add
 	for f in $(1); do \
-	if [[ -d $${f} ]]; then cp -Rpf $${f} $(dist-module-work-dir); else  cp -fp $${f} $(dist-module-work-dir); fi; \
+	if [[ -d $${f} ]]; then cp -Rf $${f} $(dist-module-work-dir); else  cp -fp $${f} $(dist-module-work-dir); fi; \
 	done
 endef
 
@@ -157,7 +157,7 @@ endef
 define dist-module-add-to
 	@if [[ ! -d $(dist-module-work-dir)/$(2) ]]; then mkdir -p $(dist-module-work-dir)/$(2) ; fi
 	for f in $(1); do \
-	if [[ -d $${f} ]]; then cp -Rpf $${f} $(dist-module-work-dir)/$(2); else cp -fp $${f} $(dist-module-work-dir)/$(2); fi; \
+	if [[ -d $${f} ]]; then cp -Rf $${f} $(dist-module-work-dir)/$(2); else cp -fp $${f} $(dist-module-work-dir)/$(2); fi; \
 	done
 endef
 
@@ -199,9 +199,10 @@ endef
 ## Clones or updates a git repository, that will be used as packaged module
 ##########################
 define dist-git-module
-	@echo "[DIST] Cloning/Updating git module from $(1) into $(3), using branch/tag $(2)"
+	@echo -e "\e[93;1m[DIST] Cloning/Updating git module from $(1) into $(3), using branch/tag $(2)\e[0m"
 	@if [[ -d $(3) ]]; then \
-		cd $(3) && git pull; \
+		echo -e "\e[93;1m[DIST] Updating  $(3) from origin\e[0m"; \
+		cd $(3) && git remote set-url origin $(1) && git pull; \
 	else \
 		git clone -b $(2) $(1) $(3); \
 	fi;
